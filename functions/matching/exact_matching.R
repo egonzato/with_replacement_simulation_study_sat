@@ -154,8 +154,6 @@ matching=function(data=NULL,treatment=NULL,ageofonset=NULL,duration=NULL,sex=NUL
   discarded=if(length(unmatched)>0) unmatched else NULL
   # warning unmatched
   if(warning&&length(unmatched)>0){warning("Some treated patients were unmatched")}
-  # define results of optimal search
-  optimalres=if(method %in% c('optimal','optimal.ilp')) match_result else NULL
   # list the robjects to return
-  return(list(dataset=dftrial,optimalres=optimalres,discarded=discarded,method=method,caliper=caliper,maxcaliper=maxcaliper,step=step,ratio=ratio,replacement=replacement))
+  return(list(dataset=dftrial,discarded=discarded,method=method,caliper=caliper,maxcaliper=maxcaliper,step=step,ratio=ratio,replacement=replacement))
 }

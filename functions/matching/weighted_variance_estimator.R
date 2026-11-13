@@ -36,7 +36,7 @@ weighted_variance_estimator=function(df=NULL,time=NULL,event=NULL,treatment=NULL
   k2=length(unique(pat_vec))
   k3=length(unique(unique_vec))
   # calculate variance
-  var=((k1/(k1-1))*V1)+((k2/(k2-1))*V2)+((k3/(k3-1))*V3)
+  var=((k1/(k1-1))*V1)+((k2/(k2-1))*V2)-((k3/(k3-1))*V3)
   # extract standard error
   ses=sqrt(diag(var))
   # get coefficient for beta

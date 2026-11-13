@@ -126,7 +126,7 @@ Run model
 
 ```{r}
 model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
-              data=matcheddf,robust=T,cluster=cluster)
+              data=matcheddf,weights=iweight)
 ```
 
 Point estimate

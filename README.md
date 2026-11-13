@@ -6,12 +6,13 @@ when few patients are available in the historical control pool some treated part
 
 - dgm is based on previous simulation study, see `simulation_study_sat`
 - adapted matching functions to allow for `replacement=TRUE`
-
-# to do
-
 - add weights
     - number of controls in cluster should sum to one (`cweight`)
     - number of times a unique control is used should sum to one (`iweight`)
+
+# to do
+
+- write shuffling function (both for RR and HR)
 - write variance estimator function (Austin et al. adapted from Miglioretti et al.)
 - think about possible solutions
     - adapt variance estimator to use weights

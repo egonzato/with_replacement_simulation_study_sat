@@ -1,0 +1,173 @@
+## ----------------------------------------------------------------------------------------------------
+pacman::p_load(readxl,dplyr,tidyverse,optmatch,lpSolve,
+               randomForest,survival,ggsurvfit,survminer,MatchIt,boot)
+
+
+## ----------------------------------------------------------------------------------------------------
+function_dirs=c("C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 7 - Matching with replacement\\Code\\paper\\functions\\matching",
+                "C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 7 - Matching with replacement\\Code\\paper\\functions\\wrapper\\time_to_event")
+for (i in 1:length(function_dirs)){
+  files=list.files(function_dirs[i], pattern = "\\.R$", full.names = TRUE)
+sapply(files, source)
+}
+
+
+## ----------------------------------------------------------------------------------------------------
+pop=readRDS("C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 5 - Simulation study in SATs\\Data\\paper\\main_analysis\\with duration\\time_to_event\\population_rr_0.25.rds")
+
+
+## ----------------------------------------------------------------------------------------------------
+trt=pop %>% filter(trt==1) 
+untrt=pop %>% filter(trt==0) 
+
+
+## ----------------------------------------------------------------------------------------------------
+set.seed(03111963)
+dftrial=rbind(trt[sample(1:nrow(trt),20),],
+            untrt[sample(1:nrow(untrt),50),]) %>% 
+  select(id,ageonset,sex,calendar,event,time,duration,trt)
+
+
+## ----------------------------------------------------------------------------------------------------
+matched=duration_matching(dftrial,treatment=trt,duration=duration,time=time,ratio=2,replacement=F)
+# extract dataset
+matcheddf=matched$dataset %>% 
+  mutate(event=ifelse(time_trial>730,0,1),
+         time_trial=ifelse(time_trial>730,730,time_trial))
+
+
+## ----------------------------------------------------------------------------------------------------
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+
+
+## ----------------------------------------------------------------------------------------------------
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand="ATT",landmark=730)[[1]]
+
+
+## ----------------------------------------------------------------------------------------------------
+matched=duration_matching(dftrial,treatment=trt,duration=duration,time=time,ratio=2,replacement=T)
+# extract dataset
+matcheddf=matched$dataset %>% 
+  mutate(event=ifelse(time_trial>730,0,1),
+         time_trial=ifelse(time_trial>730,730,time_trial))
+
+
+## ----------------------------------------------------------------------------------------------------
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+
+
+## ----------------------------------------------------------------------------------------------------
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand="ATT",landmark=730)[[1]]
+
+
+## ----------------------------------------------------------------------------------------------------
+# match
+matched=matching(data=dftrial,treatment=trt,
+                   ageofonset=ageonset,sex=sex,
+                   duration=duration,time=time,
+                   method='greedy',
+                   #caliper=NULL,step=NULL,maxcaliper=NULL,
+                   caliper=1,step=0.1,maxcaliper=1,
+                   ratio=2,
+                   replacement=T,history=F,warning=F)
+
+# extract dataset
+matcheddf=matched$dataset %>% 
+  mutate(event=ifelse(time_trial>730,0,1),
+         time_trial=ifelse(time_trial>730,730,time_trial))
+
+
+## ----------------------------------------------------------------------------------------------------
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+
+
+## ----------------------------------------------------------------------------------------------------
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand="ATT",landmark=730)[[1]]
+
+
+## ----------------------------------------------------------------------------------------------------
+matched=psm_matching(data=dftrial,
+                     formula=trt~ageonset+sex,
+                     ratio=2,
+                     replacement=F,
+                     distance='glm',
+                     method='greedy',
+                     #tune=TRUE,
+                     caliper=0.1,
+                     duration=duration,
+                     time=time)
+# extract dataset
+matcheddf=matched$dataset %>% 
+  select(id,cluster,trt,time_trial,event,calendar) %>% 
+  mutate(event=ifelse(time_trial>730,0,event),
+         time_trial=ifelse(time_trial>730,730,time_trial))
+
+
+## ----------------------------------------------------------------------------------------------------
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+
+
+## ----------------------------------------------------------------------------------------------------
+rr=risk_ratio(matcheddf,model=model,treatment="trt",estimand="ATT",landmark=730)
+
+
+## ----------------------------------------------------------------------------------------------------
+matched=psm_matching(data=dftrial,
+                     formula=trt~ageonset+I(ageonset^2)+sex,
+                     ratio=2,
+                     replacement=T,
+                     distance='random forest',
+                     method='greedy',
+                     tune=FALSE,
+                     caliper=NULL,
+                     duration=duration,
+                     time=time)
+# extract dataset
+matcheddf=matched$dataset
+
+
+## ----------------------------------------------------------------------------------------------------
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,model=T,
+              data=matcheddf,robust=T,cluster=cluster)
+
+
+## ----------------------------------------------------------------------------------------------------
+rr=risk_ratio(data=matcheddf,model=model,
+              treatment="trt",estimand="ATT",landmark=730)
+
+
+## ----------------------------------------------------------------------------------------------------
+matched=psm_matching(data=dftrial,
+                     formula=trt~ageonset+sex,
+                     ratio=2,
+                     replacement=T,
+                     distance='mahalanobis',
+                     method='greedy',
+                     #tune=TRUE,
+                     caliper=0.1,
+                     duration=duration,
+                     time=time)
+# extract dataset
+matcheddf=matched$dataset
+
+
+## ----------------------------------------------------------------------------------------------------
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+
+
+## ----------------------------------------------------------------------------------------------------
+rr=risk_ratio(data=matcheddf,model=model,
+              treatment="trt",estimand="ATT",landmark=730)
+
+
+## ----------------------------------------------------------------------------------------------------
+knitr::purl("C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 7 - Matching with replacement\\Code\\paper\\main_analysis\\unanchored\\single_methods\\single_methods.qmd")
+

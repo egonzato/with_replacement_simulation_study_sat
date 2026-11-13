@@ -55,23 +55,17 @@ duration_matching=function(data=NULL,treatment=NULL,duration,time=NULL,ratio=NUL
   } else {
     for(i in 1:nrow(treated)){
       # at the beginning of each search the caliper is reset to its initial value
-      current_caliper=caliper; filtered=NULL; controls=NULL; treatedp=NULL
+      # extract values for current individual, for the matching criteria
+      current_duration=treated_duration[i]; filtered=NULL; controls=NULL; treatedp=NULL
       # while loop runs until: i) one control is found or ii) current caliper is higher than the maximum allowed
-      while(current_caliper<=maxcaliper){
-        # extract values for current individual
-        current_ageofonset=treated_ageofonset[i]; if(!is.null(enexpr(duration))){current_duration=treated_duration[i]}; if(!is.null(enexpr(sex))){current_sex=treated_sex[i]}
-        # filter for the matching criteria
-        filtered=untreated %>% filter(!!filter_expr) 
-        # if set to TRUE, prints the number of available controls for each treated participant (given the criteria), at each sequential search
-        if(history==TRUE){print(paste('Patient n.:',i,'Caliper:',current_caliper,'Available:',nrow(filtered),sep=' '))}
-        # given that the argument ratio can be an integer or set to NULL, in matching with replacement it is needed to specify
-        # the update of caliper in following way:
-        # i) 1 to ratio, update if the number of controls is lower than ratio, up to the maximum allowed
-        # ii) 1 to n, update until at least a control is found
-        ratio.rep=ifelse(is.null(ratio),1,ratio)
-        # if controls are found, then the loop stops, otherwise, the caliper is updated and the search starts with the new caliper
-        if(nrow(filtered)>=ratio.rep){break} else {current_caliper=current_caliper+step}
-      }
+      filtered=untreated %>% filter(!!filter_expr) 
+      # if set to TRUE, prints the number of available controls for each treated participant (given the criteria), at each sequential search
+      if(history==TRUE){print(paste('Patient n.:',i,'Caliper:',current_caliper,'Available:',nrow(filtered),sep=' '))}
+      # given that the argument ratio can be an integer or set to NULL, in matching with replacement it is needed to specify
+      # the update of caliper in following way:
+      # i) 1 to ratio, update if the number of controls is lower than ratio, up to the maximum allowed
+      # ii) 1 to n, update until at least a control is found
+      ratio.rep=ifelse(is.null(ratio),1,ratio)
       # if the number of rows is equal to zero (i.e. no control was found), then the id is added to the unmatched vector
       # if the number of controls is lower than the ratio specified (when it is not null), then add to the unmatched vector
       if(nrow(filtered)==0|(!is.null(ratio)&nrow(filtered)<ratio.rep)){unmatched=c(unmatched,treated$id[i])}

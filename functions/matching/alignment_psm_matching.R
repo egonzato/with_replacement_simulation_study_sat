@@ -199,13 +199,12 @@ psm_matching=function(data=NULL,formula=NULL,duration=NULL,time=NULL,distance='g
         mutate(.,time_trial=(!!time_quo))
     } %>% 
     group_by(cluster) %>%
-    mutate(count=max(row_number()),nmcluster=count-1,wmcluster=1/nmcluster) %>%
+    mutate(wcluster=1/(max(row_number())-1)) %>%
     ungroup() %>%
     group_by(idx,(!!treatment_quo)) %>%
-    mutate(weight=sum(wmcluster)) %>%
+    mutate(cweight=ifelse((!!treatment_quo)==0,wcluster,1),
+           iweight=1/max(row_number())) %>% 
     ungroup() %>%
-    mutate(weight=ifelse((!!treatment_quo)==0,weight,1)) %>%
-    select(-count,-nmcluster,-wmcluster) %>%
     filter(!is.na(time_trial)) %>%
     arrange(cluster,desc((!!treatment_quo)))
   # delete weights if replacement == FALSE

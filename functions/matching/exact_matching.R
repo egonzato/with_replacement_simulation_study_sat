@@ -136,6 +136,8 @@ matching=function(data=NULL,treatment=NULL,ageofonset=NULL,duration=NULL,sex=NUL
       else
         mutate(.,time_trial=(!!time_quo))
     } %>%
+    # drop rows without follow-up time before weighting, so that weights still sum to one
+    filter(!is.na(time_trial)) %>%
     group_by(cluster) %>%
     mutate(wcluster=1/(max(row_number())-1)) %>%
     ungroup() %>%
@@ -143,7 +145,6 @@ matching=function(data=NULL,treatment=NULL,ageofonset=NULL,duration=NULL,sex=NUL
     mutate(cweight=ifelse((!!treatment_quo)==0,wcluster,1),
            iweight=1/max(row_number())) %>% 
     ungroup() %>%
-    filter(!is.na(time_trial)) %>%
     arrange(cluster,desc((!!treatment_quo)))
   # delete weights if replacement == FALSE
   if(replacement==FALSE){dftrial=dftrial %>% select(-cweight,-iweight)}

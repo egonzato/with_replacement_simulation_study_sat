@@ -60,7 +60,7 @@ duration_matching=function(data=NULL,treatment=NULL,duration,time=NULL,ratio=NUL
       # while loop runs until: i) one control is found or ii) current caliper is higher than the maximum allowed
       filtered=untreated %>% filter(!!filter_expr) 
       # if set to TRUE, prints the number of available controls for each treated participant (given the criteria), at each sequential search
-      if(history==TRUE){print(paste('Patient n.:',i,'Caliper:',current_caliper,'Available:',nrow(filtered),sep=' '))}
+      if(history==TRUE){print(paste('Patient n.:',i,'Available:',nrow(filtered),sep=' '))}
       # given that the argument ratio can be an integer or set to NULL, in matching with replacement it is needed to specify
       # the update of caliper in following way:
       # i) 1 to ratio, update if the number of controls is lower than ratio, up to the maximum allowed
@@ -91,6 +91,8 @@ duration_matching=function(data=NULL,treatment=NULL,duration,time=NULL,ratio=NUL
       else
         mutate(.,time_trial=(!!time_quo))
     } %>%
+    # drop rows without follow-up time before weighting, so that weights still sum to one
+    filter(!is.na(time_trial)) %>%
     group_by(cluster) %>%
     mutate(wcluster=1/(max(row_number())-1)) %>%
     ungroup() %>%
@@ -98,10 +100,9 @@ duration_matching=function(data=NULL,treatment=NULL,duration,time=NULL,ratio=NUL
     mutate(cweight=ifelse((!!treatment_quo)==0,wcluster,1),
            iweight=1/max(row_number())) %>% 
     ungroup() %>%
-    filter(!is.na(time_trial)) %>%
     arrange(cluster,desc((!!treatment_quo)))
   # delete weights if replacement == FALSE
-  if(replacement==FALSE){dftrial=dftrial %>% select(-weight)}
+  if(replacement==FALSE){dftrial=dftrial %>% select(-cweight,-iweight)}
   # keep unique values of unmatched patients
   unmatched=unique(unmatched)
   # set unmatched to null if empty

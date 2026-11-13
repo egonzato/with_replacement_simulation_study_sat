@@ -1,0 +1,215 @@
+---
+title: "single_methods"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+pacman::p_load(readxl,dplyr,tidyverse,optmatch,lpSolve,randomForest,survival,ggsurvfit,survminer,MatchIt,boot)
+```
+
+# Load dataset
+
+```{r}
+pop=readRDS("C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 5 - Simulation study in SATs\\Data\\paper\\main_analysis\\without duration\\time_to_event\\population_rr_0.25.rds") %>% 
+  select(id,timetotal,trt,ageonset,sex,calendar,event)
+```
+
+Divide into treated and untreated
+
+```{r}
+trt=pop %>% filter(trt==1)
+untrt=pop %>% filter(trt==0)
+```
+
+Smaller sample size
+
+```{r}
+set.seed(11112000)
+dftrial=rbind(trt[sample(1:nrow(trt),20),],
+            untrt[sample(1:nrow(untrt),50),]) %>% 
+  mutate(event=ifelse(timetotal>730,0,1),
+         time_trial=ifelse(timetotal>730,730,timetotal),
+         sex=ifelse(sex=="female",0,1)) %>% 
+  select(id,ageonset,sex,calendar,event,timetotal,time_trial,trt)
+```
+
+# Source function
+
+```{r,warning=FALSE,message=FALSE}
+function_dirs=c("C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 7 - Matching with replacement\\Code\\paper\\functions\\matching",
+                "C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 7 - Matching with replacement\\Code\\paper\\functions\\wrapper\\time_to_event")
+for (i in 1:length(function_dirs)){
+  files=list.files(function_dirs[i], pattern = "\\.R$", full.names = TRUE)
+sapply(files, source)
+}
+```
+
+# Methods
+
+## No matching, raw
+
+Run model
+
+```{r}
+model=coxph(Surv(timetotal,event)~trt+calendar,x=T,data=dftrial)
+```
+
+Point estimate
+
+```{r}
+rr=risk_ratio(dftrial,model=model,
+              treatment="trt",estimand='ATT',landmark=730)[[1]]
+```
+
+
+## Exact matching
+
+```{r}
+matched=matching(data=dftrial,treatment=trt,ageofonset=ageonset,sex=sex,
+                 duration=NULL,time=timetotal,method='greedy',
+                 #caliper=NULL,step=NULL,maxcaliper=NULL,
+                 caliper=0.5,step=0.1,maxcaliper=0.5,
+                 ratio=2,
+                 replacement=T,history=F,warning=TRUE)
+# extract dataset
+matcheddf=matched$dataset
+# table
+table(matched$dataset$trt,matched$dataset$event)
+```
+
+### Point estimate
+
+Run model
+
+```{r}
+model=coxph(Surv(time_trial,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+```
+
+Point estimate
+
+```{r}
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand='ATT',landmark=730)[[1]]
+```
+
+### glm
+
+#### Single procedure
+
+In this case the time in the trial is the variable `time`, which is: i) time in the trial for treated participants; ii) disease duration for historical controls. Use an easy specification for the treatment model
+
+```{r}
+matched=psm_matching(data=dftrial,
+                     formula=trt~ageonset+sex,
+                     ratio=2,
+                     replacement=F,
+                     distance='glm',
+                     method='greedy',
+                     #tune=TRUE,
+                     caliper=NULL,
+                     duration=NULL,
+                     time=timetotal)
+# extract dataset
+matcheddf=matched$dataset
+```
+
+### Point estimate
+
+Run model
+
+```{r}
+model=coxph(Surv(timetotal,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+```
+
+Point estimate
+
+```{r}
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand='ATT',landmark=730)
+```
+
+### mahalanobis
+
+#### single procedure
+
+In this case the time in the trial is the variable `time`, which is: i) time in the trial for treated participants; ii) disease duration for historical controls. Use an easy specification for the treatment model
+
+```{r}
+matched=psm_matching(data=dftrial,
+                     formula=trt~ageonset+sex,
+                     ratio=2,
+                     replacement=F,
+                     distance='mahalanobis',
+                     method='greedy',
+                     #tune=TRUE,
+                     caliper=,
+                     duration=NULL,
+                     time=timetotal)
+# extract dataset
+matcheddf=matched$dataset
+```
+
+### Point estimate
+
+Run model
+
+```{r}
+model=coxph(Surv(timetotal,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+```
+
+Point estimate
+
+```{r}
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand='ATT',landmark=730)[[1]]
+```
+
+### random forest
+
+#### single procedure
+
+In this case the time in the trial is the variable `time`, which is: i) time in the trial for treated participants; ii) disease duration for historical controls. Use an easy specification for the treatment model
+
+```{r}
+set.seed(181299)
+matched=psm_matching(data=dftrial,
+                     formula=trt~ageonset+sex,
+                     ratio=NULL,
+                     replacement=T,
+                     distance='random forest',
+                     method='greedy',
+                     tune=TRUE,
+                     caliper=0.05,
+                     duration=NULL,
+                     time=timetotal)
+# extract matched dataset
+matcheddf=matched$dataset
+```
+
+### Point estimate
+
+Run model
+
+```{r}
+model=coxph(Surv(timetotal,event)~trt+calendar,x=T,
+              data=matcheddf,robust=T,cluster=cluster)
+```
+
+Point estimate
+
+```{r}
+rr=risk_ratio(matcheddf,model=model,
+              treatment="trt",estimand='ATT',landmark=730)[[1]]
+```
+
+# Knitr
+
+```{r}
+knitr::purl("C:\\Users\\P095206\\OneDrive - Amsterdam UMC\\Shared material with Elia\\PhD\\Project 7 - Matching with replacement\\Code\\paper\\main_analysis\\unanchored\\single_methods\\single_methods.qmd")
+```
